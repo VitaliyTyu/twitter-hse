@@ -107,9 +107,11 @@ export default function Home() {
       <main className="flex h-screen justify-center bg-gradient-to-b from-[#d6b6ff9d] to-[#3842ff6c]">
         <div className="flex h-full w-full flex-col border-x-2 border-slate-200 md:max-w-2xl">
           <CreatePostWizard handleCreatePost={handleCreatePost} />
-          {posts.map((post, index) => (
-            <PostView post={post} key={index} />
-          ))}
+          <div className="flex grow flex-col overflow-y-scroll">
+            {posts.map((post, index) => (
+              <PostView post={post} key={index} />
+            ))}
+          </div>
         </div>
       </main>
     </>
