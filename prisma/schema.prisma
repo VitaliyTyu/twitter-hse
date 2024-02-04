@@ -9,3 +9,15 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+model Post {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  content   String   @db.VarChar(255)
+  updatedAt DateTime @updatedAt
+
+  authorId String
+
+  @@index([authorId])
+}
