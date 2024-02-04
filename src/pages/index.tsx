@@ -1,8 +1,102 @@
+import { Post } from "@prisma/client";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-// border-x border-slate-400
+import { useState } from "react";
+
+interface PostViewProps {
+  post: Post;
+}
+const PostView = ({ post }: PostViewProps) => {
+  return (
+    <div className="flex items-center gap-3 border border-b-2 border-slate-200 p-4">
+      <Image
+        className="min-h-14 min-w-14 rounded-full blur"
+        src={""}
+        alt="Logo"
+        height={56}
+        width={56}
+      />
+      <div>
+        <div>
+          <span>Name</span>
+          <span>{` · 6 minutes ago`}</span>
+        </div>
+        <span>{post.content}</span>
+      </div>
+    </div>
+  );
+};
+
+interface CreatePostWizardProps {
+  handleCreatePost: (content: string) => void;
+}
+const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
+  const [input, setInput] = useState("");
+
+  return (
+    <div className="flex items-center gap-3 border border-b-2 border-slate-200 p-4">
+      <Image
+        className="min-h-14 min-w-14 rounded-full blur"
+        src={""}
+        alt="Logo"
+        height={56}
+        width={56}
+      />
+      <input
+        type="text"
+        className="w-full bg-transparent outline-none"
+        placeholder="Type some text"
+        value={input}
+        onChange={(e) => {
+          setInput(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (input !== "" && e.key === "Enter") {
+            e.preventDefault();
+            handleCreatePost(input);
+            setInput("");
+          }
+        }}
+      ></input>
+      <button
+        disabled={input === ""}
+        onClick={() => {
+          if (input !== "") {
+            handleCreatePost(input);
+            setInput("");
+          }
+        }}
+        className="p-4"
+      >
+        Post
+      </button>
+    </div>
+  );
+};
+
 export default function Home() {
+  const [posts, setPosts] = useState<Post[]>([
+    {
+      content: "Post 1",
+    } as Post,
+    {
+      content: `Lorem ipsum dolor sit, amet consectetur adipisicing elit. Hic
+      consectetur fuga eius aliquid possimus, eum id expedita sint
+      quas cupiditate magni, perferendis tenetur, accusamus placeat.
+      Tempora hic omnis odit aliquam?`,
+    } as Post,
+  ]);
+
+  function handleCreatePost(content: string) {
+    setPosts([
+      {
+        content: content,
+      } as Post,
+      ...posts,
+    ]);
+  }
+
   return (
     <>
       <Head>
@@ -12,40 +106,10 @@ export default function Home() {
       </Head>
       <main className="flex h-screen justify-center bg-gradient-to-b from-[#d6b6ff9d] to-[#3842ff6c]">
         <div className="flex h-full w-full flex-col border-x-2 border-slate-200 md:max-w-2xl">
-          <div className="flex items-center gap-3 border border-b-2 border-slate-200 p-4">
-            <Image
-              className="min-h-14 min-w-14 rounded-full blur"
-              src={""}
-              alt="Logo"
-              height={56}
-              width={56}
-            />
-            <input
-              className="w-full bg-transparent outline-none"
-              placeholder="Type some text"
-            ></input>
-          </div>
-          <div className="flex items-center gap-3 border border-b-2 border-slate-200 p-4">
-            <Image
-              className="min-h-14 min-w-14 rounded-full blur"
-              src={""}
-              alt="Logo"
-              height={56}
-              width={56}
-            />
-            <div>
-              <div>
-                <span>Name</span>
-                <span>{` · 6 minutes ago`}</span>
-              </div>
-              <span>
-                Lorem ipsum dolor sit, amet consectetur adipisicing elit. Hic
-                consectetur fuga eius aliquid possimus, eum id expedita sint
-                quas cupiditate magni, perferendis tenetur, accusamus placeat.
-                Tempora hic omnis odit aliquam?
-              </span>
-            </div>
-          </div>
+          <CreatePostWizard handleCreatePost={handleCreatePost} />
+          {posts.map((post, index) => (
+            <PostView post={post} key={index} />
+          ))}
         </div>
       </main>
     </>
