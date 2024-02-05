@@ -2,7 +2,7 @@ import { Post } from "@prisma/client";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface PostViewProps {
   post: Post;
@@ -29,7 +29,7 @@ const PostView = ({ post }: PostViewProps) => {
 };
 
 interface CreatePostWizardProps {
-  handleCreatePost: (content: string) => void;
+  handleCreatePost: (content: Post) => void;
 }
 const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
   const [input, setInput] = useState("");
@@ -54,7 +54,7 @@ const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
         onKeyDown={(e) => {
           if (input !== "" && e.key === "Enter") {
             e.preventDefault();
-            handleCreatePost(input);
+            handleCreatePost({ content: input } as Post);
             setInput("");
           }
         }}
@@ -63,7 +63,7 @@ const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
         disabled={input === ""}
         onClick={() => {
           if (input !== "") {
-            handleCreatePost(input);
+            handleCreatePost({ content: input } as Post);
             setInput("");
           }
         }}
@@ -76,26 +76,41 @@ const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
 };
 
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      content: "Post 1",
-    } as Post,
-    {
-      content: `Lorem ipsum dolor sit, amet consectetur adipisicing elit. Hic
-      consectetur fuga eius aliquid possimus, eum id expedita sint
-      quas cupiditate magni, perferendis tenetur, accusamus placeat.
-      Tempora hic omnis odit aliquam?`,
-    } as Post,
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
 
-  function handleCreatePost(content: string) {
-    setPosts([
-      {
-        content: content,
-      } as Post,
-      ...posts,
-    ]);
-  }
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch("api/posts");
+        const result = await response.json();
+        setPosts(result);
+      } catch (e) {
+        console.error("Error fetching posts", e);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  const handleCreatePost = async (post: Post) => {
+    try {
+      const response = await fetch("/api/posts", {
+        method: "POST",
+        headers: {
+          ContentType: "application/json",
+        },
+        body: JSON.stringify(post),
+      });
+
+      if (response.ok) {
+        setPosts([post, ...posts]);
+      } else {
+        console.error("Error createing post", response.statusText);
+      }
+    } catch (e) {
+      console.error("Error createing post", e);
+    }
+  };
 
   return (
     <>
