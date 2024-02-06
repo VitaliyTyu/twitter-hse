@@ -16,14 +16,18 @@ import { prisma } from "~/server/db";
  * @see https://trpc.io/docs/context
  */
 export const createTRPCContext = (opts: CreateNextContextOptions) => {
-  // const { req } = opts;
-  // const sesh = getAuth(req);
+  // import { getSession } from "next-auth/react";
+  // const session = await getSession({ req: opts.req });
 
+  // const sesh = getAuth(opts.req);
   // const userId = sesh.userId;
 
   return {
     prisma,
+
+    // can be used for auth context and session context
     // userId,
+    // session,
   };
 };
 
