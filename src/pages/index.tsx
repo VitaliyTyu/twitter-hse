@@ -1,8 +1,9 @@
-import { Post } from "@prisma/client";
+import type { Post } from "@prisma/client";
 import Head from "next/head";
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+// import Link from "next/link";
+import { useState } from "react";
+import { api } from "~/utils/api";
 
 interface PostViewProps {
   post: Post;
@@ -76,41 +77,50 @@ const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
 };
 
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  // const [posts, setPosts] = useState<Post[]>([]);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const response = await fetch("api/posts");
-        const result = await response.json();
-        setPosts(result);
-      } catch (e) {
-        console.error("Error fetching posts", e);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchPosts = async () => {
+  //     try {
+  //       const response = await fetch("api/posts");
+  //       const result = await response.json();
+  //       setPosts(result);
+  //     } catch (e) {
+  //       console.error("Error fetching posts", e);
+  //     }
+  //   };
 
-    fetchPosts();
-  }, []);
+  //   fetchPosts();
+  // }, []);
 
-  const handleCreatePost = async (post: Post) => {
-    try {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          ContentType: "application/json",
-        },
-        body: JSON.stringify(post),
-      });
+  // const handleCreatePost = async (post: Post) => {
+  //   try {
+  //     console.log(JSON.stringify(post));
+  //     const response = await fetch("/api/posts", {
+  //       method: "POST",
+  //       headers: {
+  //         ContentType: "application/json",
+  //       },
+  //       body: JSON.stringify(post),
+  //     });
 
-      if (response.ok) {
-        setPosts([post, ...posts]);
-      } else {
-        console.error("Error createing post", response.statusText);
-      }
-    } catch (e) {
-      console.error("Error createing post", e);
-    }
-  };
+  //     if (response.ok) {
+  //       setPosts([post, ...posts]);
+  //     } else {
+  //       console.error("Error createing post", response.statusText);
+  //     }
+  //   } catch (e) {
+  //     console.error("Error createing post", e);
+  //   }
+  // };
+
+  const hello = api.posts.hello.useQuery({ text: "Vitaliy" });
+
+  console.log(hello.data);
+
+  if (hello.isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
@@ -121,12 +131,13 @@ export default function Home() {
       </Head>
       <main className="flex h-screen justify-center bg-gradient-to-b from-[#d6b6ff9d] to-[#3842ff6c]">
         <div className="flex h-full w-full flex-col border-x-2 border-slate-200 md:max-w-2xl">
-          <CreatePostWizard handleCreatePost={handleCreatePost} />
+          <p>{hello.data?.greeting}</p>
+          {/* <CreatePostWizard handleCreatePost={handleCreatePost} />
           <div className="flex grow flex-col overflow-y-scroll">
             {posts.map((post, index) => (
               <PostView post={post} key={index} />
             ))}
-          </div>
+          </div> */}
         </div>
       </main>
     </>
