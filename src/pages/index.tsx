@@ -29,11 +29,18 @@ const PostView = ({ post }: PostViewProps) => {
   );
 };
 
-interface CreatePostWizardProps {
-  handleCreatePost: (content: Post) => void;
-}
-const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
+const CreatePostWizard = () => {
+  const authorId = "28f1e4f4-f9d8-4f43-85ee-37d590ad005e";
   const [input, setInput] = useState("");
+
+  const utils = api.useUtils();
+
+  const createPost = api.posts.create.useMutation({
+    onSuccess: async () => {
+      setInput("");
+      await utils.posts.invalidate();
+    },
+  });
 
   return (
     <div className="flex items-center gap-3 border border-b-2 border-slate-200 p-4">
@@ -49,76 +56,36 @@ const CreatePostWizard = ({ handleCreatePost }: CreatePostWizardProps) => {
         className="w-full bg-transparent outline-none"
         placeholder="Type some text"
         value={input}
+        disabled={createPost.isPending}
         onChange={(e) => {
           setInput(e.target.value);
         }}
         onKeyDown={(e) => {
           if (input !== "" && e.key === "Enter") {
             e.preventDefault();
-            handleCreatePost({ content: input } as Post);
-            setInput("");
+            createPost.mutate({ authorId, content: input });
           }
         }}
       ></input>
-      <button
-        disabled={input === ""}
-        onClick={() => {
-          if (input !== "") {
-            handleCreatePost({ content: input } as Post);
-            setInput("");
-          }
-        }}
-        className="p-4"
-      >
-        Post
-      </button>
+      {input !== "" && !createPost.isPending && (
+        <button
+          onClick={() => {
+            createPost.mutate({ authorId, content: input });
+          }}
+          className="p-4"
+        >
+          Post
+        </button>
+      )}
     </div>
   );
 };
 
 export default function Home() {
-  // const [posts, setPosts] = useState<Post[]>([]);
+  const authorId = "28f1e4f4-f9d8-4f43-85ee-37d590ad005e";
+  const postsQuery = api.posts.getAll.useQuery();
 
-  // useEffect(() => {
-  //   const fetchPosts = async () => {
-  //     try {
-  //       const response = await fetch("api/posts");
-  //       const result = await response.json();
-  //       setPosts(result);
-  //     } catch (e) {
-  //       console.error("Error fetching posts", e);
-  //     }
-  //   };
-
-  //   fetchPosts();
-  // }, []);
-
-  // const handleCreatePost = async (post: Post) => {
-  //   try {
-  //     console.log(JSON.stringify(post));
-  //     const response = await fetch("/api/posts", {
-  //       method: "POST",
-  //       headers: {
-  //         ContentType: "application/json",
-  //       },
-  //       body: JSON.stringify(post),
-  //     });
-
-  //     if (response.ok) {
-  //       setPosts([post, ...posts]);
-  //     } else {
-  //       console.error("Error createing post", response.statusText);
-  //     }
-  //   } catch (e) {
-  //     console.error("Error createing post", e);
-  //   }
-  // };
-
-  const hello = api.posts.hello.useQuery({ text: "Vitaliy" });
-
-  console.log(hello.data);
-
-  if (hello.isLoading) {
+  if (postsQuery.isLoading) {
     return <div>Loading...</div>;
   }
 
@@ -131,14 +98,12 @@ export default function Home() {
       </Head>
       <main className="flex h-screen justify-center bg-gradient-to-b from-[#d6b6ff9d] to-[#3842ff6c]">
         <div className="flex h-full w-full flex-col border-x-2 border-slate-200 md:max-w-2xl">
-          <p>{hello.data?.greeting}</p>
-
-          {/* <CreatePostWizard handleCreatePost={handleCreatePost} />
+          <CreatePostWizard />
           <div className="flex grow flex-col overflow-y-scroll">
-            {posts.map((post, index) => (
+            {postsQuery.data?.map((post, index) => (
               <PostView post={post} key={index} />
             ))}
-          </div> */}
+          </div>
         </div>
       </main>
     </>
