@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { z } from "zod";
 import { publicProcedure, createTRPCRouter, privateProcedure } from "../trpc";
 import type { Post } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
 import { TRPCError } from "@trpc/server";
 import { mapUserForClient } from "~/server/helpers/mapUserForClient";
+import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
+import { Redis } from "@upstash/redis";
 
 const addUserDataToPosts = async (posts: Post[]) => {
   const userIds = posts.map((post) => post.authorId);
@@ -47,6 +52,13 @@ const addUserDataToPosts = async (posts: Post[]) => {
 
   return postsWithAuthor;
 };
+
+// Create a new ratelimiter, that allows 3 requests per 1 minute
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(15, "1 m"),
+  analytics: true,
+});
 
 export const postsRouter = createTRPCRouter({
   getById: publicProcedure
@@ -101,6 +113,9 @@ export const postsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
+
+      const { success } = await ratelimit.limit(authorId);
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
 
       const post = await ctx.prisma.post.create({
         data: {

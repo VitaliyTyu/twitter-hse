@@ -20,6 +20,7 @@
     "@trpc/next": "^11.0.0-next-beta.264",
     "@trpc/react-query": "^11.0.0-next-beta.264",
     "@trpc/server": "^11.0.0-next-beta.264",
+    "@upstash/ratelimit": "^1.0.0",
     "dayjs": "^1.11.10",
     "next": "^14.0.4",
     "react": "18.2.0",
