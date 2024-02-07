@@ -2,20 +2,8 @@ import { z } from "zod";
 import { publicProcedure, createTRPCRouter, privateProcedure } from "../trpc";
 import type { Post } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
-import type { User } from "@clerk/nextjs/server";
 import { TRPCError } from "@trpc/server";
-
-const mapUserForClient = (user: User) => {
-  return {
-    id: user.id,
-    username: user.username,
-    imageUrl: user.imageUrl,
-    externalUsername:
-      user.externalAccounts.find(
-        (externalAccount) => externalAccount.provider === "oauth_github",
-      )?.username ?? null,
-  };
-};
+import { mapUserForClient } from "~/server/helpers/mapUserForClient";
 
 const addUserDataToPosts = async (posts: Post[]) => {
   const userIds = posts.map((post) => post.authorId);
@@ -71,6 +59,24 @@ export const postsRouter = createTRPCRouter({
 
     return addUserDataToPosts(posts);
   }),
+
+  getPostsByUserId: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      ctx.prisma.post
+        .findMany({
+          where: {
+            authorId: input.userId,
+          },
+          take: 100,
+          orderBy: [{ createdAt: "desc" }],
+        })
+        .then(addUserDataToPosts),
+    ),
 
   create: privateProcedure
     .input(
