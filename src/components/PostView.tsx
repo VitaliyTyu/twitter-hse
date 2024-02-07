@@ -27,10 +27,12 @@ export const PostView = ({ post, author }: PostWithUser) => {
           <Link href={`/@${author.username}`}>
             <span>{`@${author.username}`}</span>
           </Link>
-          &nbsp;
-          <span className="font-thin">{`· ${dayjs(
-            post.createdAt,
-          ).fromNow()}`}</span>
+          <Link href={`/post/${post.id}`}>
+            &nbsp;
+            <span className="font-thin">{` · ${dayjs(
+              post.createdAt,
+            ).fromNow()}`}</span>
+          </Link>
         </div>
 
         <span className="overflow-anywhere">{post.content}</span>
