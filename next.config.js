@@ -22,15 +22,15 @@ const config = {
     defaultLocale: "en",
   },
 
-  // typescript: {
-  //   ignoreBuildErrors: true,
-  // },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 
-  // eslint: {
-  //   ignoreDuringBuilds: true,
-  // },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 
-  // swcMinify: true,
+  swcMinify: true,
 };
 
 export default config;
