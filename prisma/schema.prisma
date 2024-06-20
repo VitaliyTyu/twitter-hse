@@ -33,10 +33,11 @@ model Reaction {
   type      String   @db.VarChar(20)
 
   postId    String
-  userId    String   @unique
+  userId    String
 
   post   Post   @relation(fields: [postId], references: [id])
 
+  @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
 }

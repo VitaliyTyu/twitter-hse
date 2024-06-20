@@ -246,7 +246,7 @@ export const reactionsRouter = createTRPCRouter({
       const { success } = await ratelimit.limit(userId);
       if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
 
-      // One user can set only one reaction
+      // One user can set only one reaction per post
       const existingReaction = await ctx.prisma.reaction.findFirst({
         where: {
           userId,
@@ -258,7 +258,7 @@ export const reactionsRouter = createTRPCRouter({
       if (existingReaction) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "You already has the reaction on this post",
+          message: "You already have a reaction on this post",
         });
       }
 
