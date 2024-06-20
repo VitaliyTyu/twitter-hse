@@ -9,9 +9,11 @@ import { TRPCError } from "@trpc/server";
 import { mapUserForClient } from "~/server/helpers/mapUserForClient";
 import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis";
+import { type PrismaClient } from '@prisma/client';
 
-const addUserDataToPosts = async (posts: Post[]) => {
+const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
   const userIds = posts.map((post) => post.authorId);
+  const postIds = posts.map((post) => post.id);
 
   const users = (
     await clerkClient.users.getUserList({
@@ -20,7 +22,14 @@ const addUserDataToPosts = async (posts: Post[]) => {
     })
   ).map(mapUserForClient);
 
-  const postsWithAuthor = posts.map((post) => {
+  // Fetch reactions for all posts
+  const reactions = await prisma.reaction.findMany({
+    where: {
+      postId: { in: postIds },
+    },
+  });
+
+  const postsWithAdditionalData = posts.map((post) => {
     const author = users.find((user) => user.id === post.authorId);
 
     if (!author) {
@@ -41,16 +50,20 @@ const addUserDataToPosts = async (posts: Post[]) => {
       author.username = author.externalUsername;
     }
 
+    // Filter reactions for the current post
+    const postReactions = reactions.filter((reaction) => reaction.postId === post.id);
+
     return {
       post,
       author: {
         ...author,
         username: author.username ?? "(username not found)",
       },
+      reactions: postReactions,
     };
   });
 
-  return postsWithAuthor;
+  return postsWithAdditionalData;
 };
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
@@ -70,7 +83,7 @@ export const postsRouter = createTRPCRouter({
 
       if (!post) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return (await addUserDataToPosts([post]))[0];
+      return (await addDataToPosts([post], ctx.prisma))[0];
     }),
 
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -81,7 +94,7 @@ export const postsRouter = createTRPCRouter({
 
     console.log("posts", posts);
 
-    return addUserDataToPosts(posts);
+    return addDataToPosts(posts, ctx.prisma);
   }),
 
   getPostsByUserId: publicProcedure
@@ -99,7 +112,7 @@ export const postsRouter = createTRPCRouter({
           take: 100,
           orderBy: [{ createdAt: "desc" }],
         })
-        .then(addUserDataToPosts),
+        .then((posts) => addDataToPosts(posts, ctx.prisma)),
     ),
 
   create: privateProcedure
