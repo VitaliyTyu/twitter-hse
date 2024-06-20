@@ -225,5 +225,27 @@ export const reactionsRouter = createTRPCRouter({
 
       return { message: "Reaction deleted successfully" };
     }),
+
+  deletePost: privateProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const post = await ctx.prisma.post.findUnique({
+        where: { id: input.id },
+      });
+
+      if (!post) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+      }
+
+      if (post.authorId !== ctx.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not allowed to delete this post" });
+      }
+
+      await ctx.prisma.post.delete({
+        where: { id: input.id },
+      });
+
+      return { message: "Post deleted successfully" };
+    }),
 });
 
