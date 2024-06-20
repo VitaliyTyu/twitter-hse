@@ -22,20 +22,20 @@ export const PostView = ({ post, author }: PostWithUser) => {
                 </Link>
             </div>
 
-            <div className="flex flex-col justify-between w-full overflow-hidden">
-                <div className="flex items-center justify-between w-full">
-                    <Link href={`/@${author.username}`} className="text-white hover:underline font-bold text-lg mr-3">
-                        @{author.username}
-                    </Link>
-                    <Link href={`/post/${post.id}`} className="text-gray-400 text-xs">
-                        <span className="font-light">{dayjs(post.createdAt).fromNow()}</span>
-                    </Link>
-                </div>
+            <Link href={`/post/${post.id}`} className="text-gray-400 text-xs">
+                <div className="flex flex-col justify-between w-full overflow-hidden">
+                    <div className="flex items-center justify-between w-full">
+                        <Link href={`/@${author.username}`} className="text-white hover:underline font-bold text-lg mr-3">
+                            @{author.username}
+                        </Link>
+                            <span className="font-light">{dayjs(post.createdAt).fromNow()}</span>
+                    </div>
 
-                <p className="mt-4 text-gray-300 leading-relaxed break-words w-full">
-                    {post.content}
-                </p>
-            </div>
+                    <p className="mt-4 text-gray-300 leading-relaxed break-words w-full">
+                        {post.content}
+                    </p>
+                </div>
+            </Link>
         </div>
 
     );
