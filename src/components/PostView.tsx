@@ -8,35 +8,35 @@ dayjs.extend(relativeTime);
 
 type PostWithUser = RouterOutputs["posts"]["getAll"][number];
 export const PostView = ({ post, author }: PostWithUser) => {
-  return (
-    <div className="flex items-center gap-3 border border-x border-b border-slate-400 p-4">
-      <div className="float-start flex h-full flex-col">
-        <Link href={`/@${author.username}`}>
-          <Image
-            className="min-h-14 min-w-14 rounded-full"
-            src={author.imageUrl}
-            alt={`@${author.username}'s profile picture`}
-            height={56}
-            width={56}
-          />
-        </Link>
-      </div>
+    return (
+        <div className="flex items-start gap-6 p-6 rounded-lg bg-gradient-to-r from-gray-500 to-gray-600 shadow-lg w-full mt-4 border-black-500 ">
+            <div className="flex-shrink-0">
+                <Link href={`/@${author.username}`}>
+                    <Image
+                        className="rounded-3xl border-4 border-gray-700 hover:border-black-500 transition duration-300"
+                        src={author.imageUrl}
+                        alt={`@${author.username}'s profile picture`}
+                        height={64}
+                        width={64}
+                    />
+                </Link>
+            </div>
 
-      <div className="flex flex-col">
-        <div className="flex">
-          <Link href={`/@${author.username}`}>
-            <span>{`@${author.username}`}</span>
-          </Link>
-          <Link href={`/post/${post.id}`}>
-            &nbsp;
-            <span className="font-thin">{` · ${dayjs(
-              post.createdAt,
-            ).fromNow()}`}</span>
-          </Link>
+            <div className="flex flex-col justify-between w-full overflow-hidden">
+                <div className="flex items-center justify-between w-full">
+                    <Link href={`/@${author.username}`} className="text-white hover:underline font-bold text-lg mr-3">
+                        @{author.username}
+                    </Link>
+                    <Link href={`/post/${post.id}`} className="text-gray-400 text-xs">
+                        <span className="font-light">{dayjs(post.createdAt).fromNow()}</span>
+                    </Link>
+                </div>
+
+                <p className="mt-4 text-gray-300 leading-relaxed break-words w-full">
+                    {post.content}
+                </p>
+            </div>
         </div>
 
-        <span className="overflow-anywhere">{post.content}</span>
-      </div>
-    </div>
-  );
+    );
 };
