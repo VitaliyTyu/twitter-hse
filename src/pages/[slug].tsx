@@ -57,6 +57,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
     </>
   );
 };
+
 export const getStaticProps: GetStaticProps = async (context) => {
   const ssg = generateSSGHelper();
 
