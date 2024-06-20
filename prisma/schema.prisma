@@ -19,5 +19,21 @@ model Post {
 
   authorId String
 
+  reactions Reaction[]
+
   @@index([authorId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  type      String   @db.VarChar(20)
+
+  postId    String
+  userId    String   @unique
+
+  post   Post   @relation(fields: [postId], references: [id])
+
+  @@unique([postId, userId, type])
 }

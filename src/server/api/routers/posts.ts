@@ -9,48 +9,61 @@ import { TRPCError } from "@trpc/server";
 import { mapUserForClient } from "~/server/helpers/mapUserForClient";
 import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis";
+import { type PrismaClient } from '@prisma/client';
 
-const addUserDataToPosts = async (posts: Post[]) => {
-    const userIds = posts.map((post) => post.authorId);
+const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
+  const userIds = posts.map((post) => post.authorId);
+  const postIds = posts.map((post) => post.id);
 
-    const users = (
-        await clerkClient.users.getUserList({
-            userId: userIds,
-            limit: 110,
-        })
-    ).map(mapUserForClient);
+  const users = (
+    await clerkClient.users.getUserList({
+      userId: userIds,
+      limit: 110,
+    })
+  ).map(mapUserForClient);
 
-    const postsWithAuthor = posts.map((post) => {
-        const author = users.find((user) => user.id === post.authorId);
+  // Fetch reactions for all posts
+  const reactions = await prisma.reaction.findMany({
+    where: {
+      postId: { in: postIds },
+    },
+  });
 
-        if (!author) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: `Author for post not found. POST ID: ${post.id}, USER ID: ${post.authorId}`,
-            });
-        }
+  const postsWithAdditionalData = posts.map((post) => {
+    const author = users.find((user) => user.id === post.authorId);
 
-        if (!author.username) {
-            if (!author.externalUsername) {
-                throw new TRPCError({
-                    code: "INTERNAL_SERVER_ERROR",
-                    message: `Author has no GitHub Account: ${author.id}`,
-                });
-            }
+    if (!author) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Author for post not found. POST ID: ${post.id}, USER ID: ${post.authorId}`,
+      });
+    }
 
-            author.username = author.externalUsername;
-        }
+    if (!author.username) {
+      if (!author.externalUsername) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Author has no GitHub Account: ${author.id}`,
+        });
+      }
 
-        return {
-            post,
-            author: {
-                ...author,
-                username: author.username ?? "(username not found)",
-            },
-        };
-    });
+      author.username = author.externalUsername;
+    }
 
-    return postsWithAuthor;
+    // Filter reactions for the current post
+    const postReactions = reactions.filter((reaction) => reaction.postId === post.id);
+
+    return {
+      post,
+      author: {
+        ...author,
+        username: author.username ?? "(username not found)",
+      },
+      reactions: postReactions,
+    };
+  });
+
+  return postsWithAdditionalData;
 };
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
@@ -61,17 +74,17 @@ const ratelimit = new Ratelimit({
 });
 
 export const postsRouter = createTRPCRouter({
-    getById: publicProcedure
-        .input(z.object({ id: z.string() }))
-        .query(async ({ ctx, input }) => {
-            const post = await ctx.prisma.post.findUnique({
-                where: { id: input.id },
-            });
+  getById: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const post = await ctx.prisma.post.findUnique({
+        where: { id: input.id },
+      });
 
-            if (!post) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!post) throw new TRPCError({ code: "NOT_FOUND" });
 
-            return (await addUserDataToPosts([post]))[0];
-        }),
+      return (await addDataToPosts([post], ctx.prisma))[0];
+    }),
 
     getAll: publicProcedure
         .input(z.object({ skip: z.number().optional(), take: z.number().optional() }))
@@ -84,7 +97,7 @@ export const postsRouter = createTRPCRouter({
 
             console.log("posts", posts);
 
-            return addUserDataToPosts(posts);
+            return addDataToPosts(posts, ctx.prisma);
         }),
 
     getPostsByUserId: publicProcedure
@@ -105,7 +118,7 @@ export const postsRouter = createTRPCRouter({
                     skip: input.skip ?? undefined,
                     orderBy: [{ createdAt: "desc" }],
                 })
-                .then(addUserDataToPosts),
+                .then((posts) => addDataToPosts(posts, ctx.prisma)),
         ),
 
     create: privateProcedure
@@ -133,3 +146,84 @@ export const postsRouter = createTRPCRouter({
             return post;
         }),
 });
+
+export const reactionsRouter = createTRPCRouter({
+  addReaction: privateProcedure
+    .input(
+      z.object({
+        postId: z.string(),
+        type: z.string().max(20),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.userId;
+
+      const { success } = await ratelimit.limit(userId);
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
+
+      // One user can set only one reaction
+      const existingReaction = await ctx.prisma.reaction.findFirst({
+        where: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      if (existingReaction) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You already has the reaction on this post",
+        });
+      }
+
+      const reaction = await ctx.prisma.reaction.create({
+        data: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      return reaction;
+    }),
+
+    removeReaction: privateProcedure
+    .input(
+      z.object({
+        postId: z.string(),
+        type: z.string().max(20),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.userId;
+
+      const { success } = await ratelimit.limit(userId);
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
+
+      // Find existing reaction to remove it
+      const existingReaction = await ctx.prisma.reaction.findFirst({
+        where: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      if (!existingReaction) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Reaction not found",
+        });
+      }
+
+      await ctx.prisma.reaction.delete({
+        where: {
+          id: existingReaction.id,
+        },
+      });
+
+      return { message: "Reaction deleted successfully" };
+    }),
+});
+
