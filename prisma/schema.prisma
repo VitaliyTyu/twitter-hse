@@ -37,7 +37,8 @@ model Reaction {
 
   post   Post   @relation(fields: [postId], references: [id])
 
-  @@unique([postId, userId, type])
+  @@index([postId])
+  @@index([authorId])
 }
 
 model Comment {
