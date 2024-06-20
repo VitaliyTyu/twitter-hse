@@ -18,7 +18,7 @@
 - UPSTASH_REDIS_REST_TOKEN=""
 
 3. Выполнить миграцию бд с помощью команды ```npx prisma migrate dev --name "Название миграции"```
-4. Скрипт для запуска: npm run dev
+4. Скрипт для запуска: ```npm run dev```
 
 - [Next.js](https://nextjs.org)
 - [NextAuth.js](https://next-auth.js.org)
