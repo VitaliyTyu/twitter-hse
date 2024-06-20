@@ -127,3 +127,85 @@ export const postsRouter = createTRPCRouter({
       return post;
     }),
 });
+
+export const reactionsRouter = createTRPCRouter({
+  addReaction: privateProcedure
+    .input(
+      z.object({
+        postId: z.string(),
+        type: z.string().max(20),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.userId;
+
+      const { success } = await ratelimit.limit(userId);
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
+
+      // Проверка уникальности (один пользователь может оставить только одну реакцию определенного типа на пост)
+      const existingReaction = await ctx.prisma.reaction.findFirst({
+        where: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      if (existingReaction) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Вы уже оставили такую реакцию на этот пост.",
+        });
+      }
+
+      const reaction = await ctx.prisma.reaction.create({
+        data: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      return reaction;
+    }),
+
+    removeReaction: privateProcedure
+    .input(
+      z.object({
+        postId: z.string(),
+        type: z.string().max(20), // Тип реакции
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.userId;
+
+      const { success } = await ratelimit.limit(userId);
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
+
+      // Найти существующую реакцию
+      const existingReaction = await ctx.prisma.reaction.findFirst({
+        where: {
+          userId,
+          postId: input.postId,
+          type: input.type,
+        },
+      });
+
+      if (!existingReaction) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Реакция не найдена.",
+        });
+      }
+
+      // Удалить реакцию
+      await ctx.prisma.reaction.delete({
+        where: {
+          id: existingReaction.id,
+        },
+      });
+
+      return { message: "Реакция успешно удалена." };
+    }),
+});
+
