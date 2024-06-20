@@ -167,7 +167,7 @@ export const reactionsRouter = createTRPCRouter({
       if (existingReaction) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Вы уже оставили такую реакцию на этот пост.",
+          message: "You already has the reaction on this post",
         });
       }
 
@@ -207,7 +207,7 @@ export const reactionsRouter = createTRPCRouter({
       if (!existingReaction) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Реакция не найдена.",
+          message: "Reaction not found",
         });
       }
 
@@ -217,7 +217,7 @@ export const reactionsRouter = createTRPCRouter({
         },
       });
 
-      return { message: "Реакция успешно удалена." };
+      return { message: "Reaction deleted successfully" };
     }),
 });
 
