@@ -62,27 +62,33 @@ export default function Home() {
                 )}
                 {isSignedIn && <CreatePostWizard />}
             </div>
-            <Feed skip={page * take} take={take} />
-            <div className="flex justify-between p-4">
-                <button
-                    onClick={handlePreviousPage}
-                    disabled={page === 0}
-                    className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-gray-500 hover:bg-gray-600"
-                        } text-white`}
-                >
-                    Previous
-                </button>
-                <button
-                    onClick={handleNextPage}
-                    disabled={page === totalPages - 1}
-                    className={`px-4 py-2 rounded-lg ${page === totalPages - 1
-                        ? "bg-gray-300 cursor-not-allowed"
-                        : "bg-gray-500 hover:bg-gray-600"
-                        } text-white`}
-                >
-                    Next
-                </button>
-            </div>
+            {postsData ? (
+                <>
+                    <Feed skip={page * take} take={take} />
+                    <div className="flex justify-between p-4">
+                        <button
+                            onClick={handlePreviousPage}
+                            disabled={page === 0}
+                            className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-gray-500 hover:bg-gray-600"
+                                } text-white`}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={handleNextPage}
+                            disabled={page === totalPages - 1}
+                            className={`px-4 py-2 rounded-lg ${page === totalPages - 1
+                                ? "bg-gray-300 cursor-not-allowed"
+                                : "bg-gray-500 hover:bg-gray-600"
+                                } text-white`}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </>
+            ) : (
+                <div className="text-lg font-semibold text-gray-700 mt-6">No posts available</div>
+            )}
         </PageLayout>
 
     );

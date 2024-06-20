@@ -2,57 +2,57 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+    provider = "mysql"
+    url      = env("DATABASE_URL")
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+    id        String   @id @default(cuid())
+    createdAt DateTime @default(now())
 
-  content   String   @db.VarChar(1023)
-  updatedAt DateTime @updatedAt
+    content   String   @db.VarChar(1023)
+    updatedAt DateTime @updatedAt
 
-  authorId String
+    authorId String
 
-  comments Comment[]
+    comments Comment[]
 
-  reactions Reaction[]
+    reactions Reaction[]
 
-  @@index([authorId])
+    @@index([authorId])
 }
 
 model Reaction {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+    id        String   @id @default(cuid())
+    createdAt DateTime @default(now())
 
-  type      String   @db.VarChar(20)
+    type String @db.VarChar(20)
 
-  postId    String
-  userId    String
+    postId String
+    userId String
 
-  post   Post   @relation(fields: [postId], references: [id])
+    post Post @relation(fields: [postId], references: [id])
 
-  @@unique([postId, userId])
-  @@index([postId])
-  @@index([userId])
+    @@unique([postId, userId])
+    @@index([postId])
+    @@index([userId])
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+    id        String   @id @default(cuid())
+    createdAt DateTime @default(now())
 
-  content   String
+    content String
 
-  authorId  String
+    authorId String
 
-  post Post @relation(fields: [postId], references: [id])
-  postId String
+    post   Post   @relation(fields: [postId], references: [id])
+    postId String
 
-  @@index([postId])
-  @@index([authorId])
+    @@index([postId])
+    @@index([authorId])
 }
