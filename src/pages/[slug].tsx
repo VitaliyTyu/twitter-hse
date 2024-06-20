@@ -3,9 +3,7 @@ import type { GetStaticPaths, GetStaticProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { LoadingPage } from "~/components/LoadingPage";
-import NavigationPanel from "~/components/NavigationPanel";
 import { PageLayout } from "~/components/PageLayout";
 import { PostView } from "~/components/PostView";
 import { generateSSGHelper } from "~/server/helpers/ssgHelper";
@@ -56,7 +54,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
 
     if (!data) return <div>404</div>;
 
-    const { data: postsData, isLoading } = api.posts.getPostsByUserId.useQuery({
+    const { data: postsData } = api.posts.getPostsByUserId.useQuery({
         userId: data.id,
     });
 
