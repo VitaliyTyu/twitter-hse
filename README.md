@@ -6,7 +6,7 @@
 
 ## Для запуска:
 
-1.  npm install
+1.  ```npm install```
 2.  создать .env файл с сылкой на подключени к бд, ключи к Clerk и ключи к Redis
 
     названия полей:
@@ -17,7 +17,7 @@
 - UPSTASH_REDIS_REST_URL=""
 - UPSTASH_REDIS_REST_TOKEN=""
 
-3. Выполнить миграцию бд с помощью команды npx prisma migrate dev --name "Название миграции"
+3. Выполнить миграцию бд с помощью команды ```npx prisma migrate dev --name "Название миграции"```
 4. Скрипт для запуска: npm run dev
 
 - [Next.js](https://nextjs.org)
