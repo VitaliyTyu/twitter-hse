@@ -44,7 +44,7 @@ const SinglePostPage: NextPage<{ id: string }> = ({ id }) => {
                     <div className="w-full max-w-3xl">
                         <PostView {...data} />
                         <div className="text-lg font-semibold text-gray-700 mt-6">Комментарии</div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col overflow-y-scroll">
                             {data.comments.map((comment) => (
                                 <CommentView
                                     author={comment.author}
