@@ -155,7 +155,7 @@ export const reactionsRouter = createTRPCRouter({
       const { success } = await ratelimit.limit(userId);
       if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
 
-      // Проверка уникальности (один пользователь может оставить только одну реакцию определенного типа на пост)
+      // One user can set only one reaction
       const existingReaction = await ctx.prisma.reaction.findFirst({
         where: {
           userId,
@@ -186,7 +186,7 @@ export const reactionsRouter = createTRPCRouter({
     .input(
       z.object({
         postId: z.string(),
-        type: z.string().max(20), // Тип реакции
+        type: z.string().max(20),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -195,7 +195,7 @@ export const reactionsRouter = createTRPCRouter({
       const { success } = await ratelimit.limit(userId);
       if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
 
-      // Найти существующую реакцию
+      // Find existing reaction to remove it
       const existingReaction = await ctx.prisma.reaction.findFirst({
         where: {
           userId,
@@ -211,7 +211,6 @@ export const reactionsRouter = createTRPCRouter({
         });
       }
 
-      // Удалить реакцию
       await ctx.prisma.reaction.delete({
         where: {
           id: existingReaction.id,
