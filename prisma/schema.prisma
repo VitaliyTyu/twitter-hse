@@ -19,6 +19,8 @@ model Post {
 
   authorId String
 
+  comments Comment[]
+
   reactions Reaction[]
 
   @@index([authorId])
@@ -36,4 +38,19 @@ model Reaction {
   post   Post   @relation(fields: [postId], references: [id])
 
   @@unique([postId, userId, type])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  content   String
+
+  authorId  String
+
+  post Post @relation(fields: [postId], references: [id])
+  postId String
+
+  @@index([postId])
+  @@index([authorId])
 }

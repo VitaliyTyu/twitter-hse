@@ -11,7 +11,18 @@ import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis";
 import { type PrismaClient } from '@prisma/client';
 
-const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
+interface IComment {
+  id: string;
+  authorId: string;
+  content: string;
+  createdAt: Date;
+}
+
+interface IPost extends Post {
+  comments: IComment[];
+}
+
+const addDataToPosts = async (posts: IPost[], prisma: PrismaClient) => {
   const userIds = posts.map((post) => post.authorId);
   const postIds = posts.map((post) => post.id);
 
@@ -28,6 +39,21 @@ const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
       postId: { in: postIds },
     },
   });
+
+  const addUserDataToComments = (comments: IComment[]) => {
+    if (comments.length === 0) return [];
+  
+    const newComments = comments.map((comment) => {
+      const authorData = users.find((user) => user.id === comment.authorId);
+  
+      return {
+        ...comment,
+        author: authorData,
+      };
+    });
+  
+    return newComments;
+  };
 
   const postsWithAdditionalData = posts.map((post) => {
     const author = users.find((user) => user.id === post.authorId);
@@ -52,9 +78,10 @@ const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
 
     // Filter reactions for the current post
     const postReactions = reactions.filter((reaction) => reaction.postId === post.id);
-
+    const newComments = addUserDataToComments(post.comments);
     return {
       post,
+      comments: newComments,
       author: {
         ...author,
         username: author.username ?? "(username not found)",
@@ -79,6 +106,9 @@ export const postsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const post = await ctx.prisma.post.findUnique({
         where: { id: input.id },
+        include: {
+          comments: true,
+        },
       });
 
       if (!post) throw new TRPCError({ code: "NOT_FOUND" });
@@ -93,6 +123,9 @@ export const postsRouter = createTRPCRouter({
                 take: input.take ?? undefined,
                 skip: input.skip ?? undefined,
                 orderBy: [{ createdAt: "desc" }],
+                include: {
+                  comments: true,
+                },
             });
 
             console.log("posts", posts);
@@ -117,6 +150,9 @@ export const postsRouter = createTRPCRouter({
                     take: input.take ?? undefined,
                     skip: input.skip ?? undefined,
                     orderBy: [{ createdAt: "desc" }],
+                    include: {
+                      comments: true,
+                    },
                 })
                 .then((posts) => addDataToPosts(posts, ctx.prisma)),
         ),
@@ -145,6 +181,38 @@ export const postsRouter = createTRPCRouter({
 
             return post;
         }),
+        addComment: privateProcedure
+    .input(
+      z.object({
+        postId: z.string(),
+        content: z.string().min(1).max(1024),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const authorId = ctx.userId;
+
+      const post = await ctx.prisma.post.findUnique({
+        where: { id: input.postId },
+        include: { comments: true }, // Включаем комментарии поста
+      });
+
+      if (!post) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Post not found",
+        });
+      }
+
+      const comment = await ctx.prisma.comment.create({
+        data: {
+          content: input.content,
+          postId: input.postId,
+          authorId,
+        },
+      });
+
+      return comment;
+    }),
 });
 
 export const reactionsRouter = createTRPCRouter({
