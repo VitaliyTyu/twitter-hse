@@ -71,7 +71,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
             </Head>
 
             <PageLayout>
-                <div className="relative h-30 bg-gray-600 rounded-lg">
+                <div className="flex items-center rounded-lg gap-3 border border-b border-gray-300 p-4 bg-gray-600">
                     <div className="flex flex-col items-center">
                         <Image
                             src={data.imageUrl}
