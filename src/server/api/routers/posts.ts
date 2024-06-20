@@ -23,38 +23,53 @@ interface IPost extends Post {
 }
 
 const addDataToPosts = async (posts: IPost[], prisma: PrismaClient) => {
-  const userIds = posts.map((post) => post.authorId);
+  // Сбор всех userIds из постов и комментариев
+  const postAuthorIds = posts.map((post) => post.authorId);
   const postIds = posts.map((post) => post.id);
 
+  // Получение всех комментариев для постов
+  const comments = await prisma.comment.findMany({
+    where: {
+      postId: { in: postIds },
+    },
+  });
+
+  // Извлечение уникальных userIds из комментариев
+  const commentAuthorIds = comments.map((comment) => comment.authorId);
+  const allUserIds = Array.from(new Set([...postAuthorIds, ...commentAuthorIds]));
+
+  // Получение данных пользователей
   const users = (
     await clerkClient.users.getUserList({
-      userId: userIds,
+      userId: allUserIds,
       limit: 110,
     })
   ).map(mapUserForClient);
 
-  // Fetch reactions for all posts
+  // Функция для добавления данных пользователей к комментариям
+  const addUserDataToComments = (comments: IComment[]) => {
+    if (comments.length === 0) return [];
+
+    const newComments = comments.map((comment) => {
+      const authorData = users.find((user) => user.id === comment.authorId);
+
+      return {
+        ...comment,
+        author: authorData,
+      };
+    });
+
+    return newComments;
+  };
+
+  // Получение реакций для всех постов
   const reactions = await prisma.reaction.findMany({
     where: {
       postId: { in: postIds },
     },
   });
 
-  const addUserDataToComments = (comments: IComment[]) => {
-    if (comments.length === 0) return [];
-  
-    const newComments = comments.map((comment) => {
-      const authorData = users.find((user) => user.id === comment.authorId);
-  
-      return {
-        ...comment,
-        author: authorData,
-      };
-    });
-  
-    return newComments;
-  };
-
+  // Создание постов с дополнительными данными
   const postsWithAdditionalData = posts.map((post) => {
     const author = users.find((user) => user.id === post.authorId);
 
@@ -76,9 +91,11 @@ const addDataToPosts = async (posts: IPost[], prisma: PrismaClient) => {
       author.username = author.externalUsername;
     }
 
-    // Filter reactions for the current post
+    // Фильтрация реакций для текущего поста
     const postReactions = reactions.filter((reaction) => reaction.postId === post.id);
-    const newComments = addUserDataToComments(post.comments);
+    const postComments = comments.filter((comment) => comment.postId === post.id);
+    const newComments = addUserDataToComments(postComments);
+
     return {
       post,
       comments: newComments,
@@ -181,38 +198,38 @@ export const postsRouter = createTRPCRouter({
 
             return post;
         }),
-        addComment: privateProcedure
-    .input(
-      z.object({
-        postId: z.string(),
-        content: z.string().min(1).max(1024),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const authorId = ctx.userId;
+    addComment: privateProcedure
+      .input(
+        z.object({
+          postId: z.string(),
+          content: z.string().min(1).max(1024),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const authorId = ctx.userId;
 
-      const post = await ctx.prisma.post.findUnique({
-        where: { id: input.postId },
-        include: { comments: true }, // Включаем комментарии поста
-      });
-
-      if (!post) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Post not found",
+        const post = await ctx.prisma.post.findUnique({
+          where: { id: input.postId },
+          include: { comments: true }, // Включаем комментарии поста
         });
-      }
 
-      const comment = await ctx.prisma.comment.create({
-        data: {
-          content: input.content,
-          postId: input.postId,
-          authorId,
-        },
-      });
+        if (!post) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Post not found",
+          });
+        }
 
-      return comment;
-    }),
+        const comment = await ctx.prisma.comment.create({
+          data: {
+            content: input.content,
+            postId: input.postId,
+            authorId,
+          },
+        });
+
+        return comment;
+      }),
 });
 
 export const reactionsRouter = createTRPCRouter({
