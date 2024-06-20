@@ -24,13 +24,13 @@ const Feed = ({ skip, take }: FeedProps) => {
     }
 
     return (
-        <div className="flex grow flex-col overflow-y-scroll ">
+        <div className="flex grow flex-col overflow-y-auto ">
             {postsData.map((fullPost) => (
                 <PostView {...fullPost} key={fullPost.post.id} />
             ))}
             {/* Check if there are fewer than 'take' posts to disable Next button */}
             {postsData.length < take && (
-                <div className="flex justify-center text-gray-500">End of posts</div>
+                <div className="flex justify-center text-gray-500 my-4">End of posts</div>
             )}
         </div>
     );
