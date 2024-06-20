@@ -1,81 +1,137 @@
+// Import necessary modules and components
 import type { GetStaticPaths, GetStaticProps, NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { LoadingPage } from "~/components/LoadingPage";
+import NavigationPanel from "~/components/NavigationPanel";
 import { PageLayout } from "~/components/PageLayout";
 import { PostView } from "~/components/PostView";
 import { generateSSGHelper } from "~/server/helpers/ssgHelper";
 import { api } from "~/utils/api";
 
-const ProfileFeed = (props: { userId: string }) => {
-  const { data, isLoading } = api.posts.getPostsByUserId.useQuery({
-    userId: props.userId,
-  });
+// Interface for ProfileFeed props
+interface ProfileFeedProps {
+    userId: string;
+    skip: number;
+    take: number;
+}
 
-  if (isLoading) return <LoadingPage />;
+// ProfileFeed component to display user posts
+const ProfileFeed: React.FC<ProfileFeedProps> = ({ userId, skip, take }) => {
+    const { data, isLoading } = api.posts.getPostsByUserId.useQuery({
+        userId,
+        skip,
+        take,
+    });
 
-  if (!data || data.length === 0) return <div>User has not posted</div>;
+    if (isLoading) return <LoadingPage />;
 
-  return (
-    <div className="flex flex-col overflow-y-scroll">
-      {data.map((fullPost) => (
-        <PostView {...fullPost} key={fullPost.post.id} />
-      ))}
-    </div>
-  );
-};
+    if (!data || data.length === 0) {
+        return <div className="text-center my-4">No posts available</div>;
+    }
 
-const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
-  const { data } = api.profile.getUserByUsername.useQuery({
-    username,
-  });
-  if (!data) return <div>404</div>;
-  return (
-    <>
-      <Head>
-        <title>{data.username ?? data.externalUsername}</title>
-      </Head>
-      <PageLayout>
-        <div className="relative h-36 bg-slate-600">
-          <Image
-            src={data.imageUrl}
-            alt={`${
-              data.username ?? data.externalUsername ?? "unknown"
-            }'s profile pic`}
-            width={128}
-            height={128}
-            className="absolute bottom-0 left-0 -mb-[64px] ml-4 rounded-full border-4 border-black bg-black"
-          />
+    return (
+        <div className="flex flex-col overflow-y-auto">
+            {data.map((fullPost) => (
+                <PostView {...fullPost} key={fullPost.post.id} />
+            ))}
+            {/* Check if there are fewer than 'take' posts to disable Next button */}
+            {data.length < take && (
+                <div className="flex justify-center text-gray-500 my-4">End of posts</div>
+            )}
         </div>
-        <div className="h-[64px]"></div>
-        <div className="p-4 text-2xl font-bold">{`@${
-          data.username ?? data.externalUsername ?? "unknown"
-        }`}</div>
-        <div className="w-full border-b border-slate-400" />
-        <ProfileFeed userId={data.id} />
-      </PageLayout>
-    </>
-  );
+    );
 };
 
+// ProfilePage component
+const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
+    const { data } = api.profile.getUserByUsername.useQuery({
+        username,
+    });
+
+    const [page, setPage] = useState(0);
+    const take = 10;
+
+    if (!data) return <div>404</div>;
+
+    const { data: postsData, isLoading } = api.posts.getPostsByUserId.useQuery({
+        userId: data.id,
+    });
+
+    const handleNextPage = () => setPage((prevPage) => prevPage + 1);
+    const handlePreviousPage = () => setPage((prevPage) => Math.max(prevPage - 1, 0));
+
+    // Calculate total pages based on postsData length and take
+    const totalPages = Math.ceil((postsData?.length ?? 0) / take);
+
+    return (
+        <>
+            <Head>
+                <title>{data.username ?? data.externalUsername}</title>
+            </Head>
+
+            <PageLayout>
+                <div className="relative h-30 bg-gray-600 rounded-lg">
+                    <div className="flex flex-col items-center">
+                        <Image
+                            src={data.imageUrl}
+                            alt={`${data.username ?? data.externalUsername ?? "Unknown"}'s profile pic`}
+                            width={128}
+                            height={128}
+                            className="rounded-full border-4 border-white"
+                        />
+                        <div className=" text-xl font-bold text-white">
+                            {`@${data.username ?? data.externalUsername ?? "Unknown"}`}
+                        </div>
+                    </div>
+                </div>
+
+                <ProfileFeed userId={data.id} skip={page * take} take={take} />
+                <div className="flex justify-between p-4">
+                    <button
+                        onClick={handlePreviousPage}
+                        disabled={page === 0}
+                        className={`px-4 py-2 rounded-lg ${page === 0 ? "bg-gray-300 cursor-not-allowed" : "bg-gray-500 hover:bg-gray-600"
+                            } text-white`}
+                    >
+                        Previous
+                    </button>
+                    <button
+                        onClick={handleNextPage}
+                        disabled={page === totalPages - 1}
+                        className={`px-4 py-2 rounded-lg ${page === totalPages - 1
+                            ? "bg-gray-300 cursor-not-allowed"
+                            : "bg-gray-500 hover:bg-gray-600"
+                            } text-white`}
+                    >
+                        Next
+                    </button>
+                </div>
+            </PageLayout>
+        </>
+    );
+};
+
+// Server-side rendering functions
 export const getStaticProps: GetStaticProps = async (context) => {
-  const ssg = generateSSGHelper();
+    const ssg = generateSSGHelper();
+    const slug = context.params?.slug;
 
-  const slug = context.params?.slug;
+    if (typeof slug !== "string") throw new Error("No slug provided");
 
-  if (typeof slug !== "string") throw new Error("no slug");
+    const username = slug.replace("@", "");
 
-  const username = slug.replace("@", "");
+    await ssg.profile.getUserByUsername.prefetch({ username });
 
-  await ssg.profile.getUserByUsername.prefetch({ username });
-
-  return {
-    props: { trpcState: ssg.dehydrate(), username },
-  };
+    return {
+        props: { trpcState: ssg.dehydrate(), username },
+    };
 };
 
 export const getStaticPaths: GetStaticPaths = () => {
-  return { paths: [], fallback: "blocking" };
+    return { paths: [], fallback: "blocking" };
 };
 
 export default ProfilePage;

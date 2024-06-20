@@ -68,9 +68,9 @@ const addDataToPosts = async (posts: Post[], prisma: PrismaClient) => {
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
 const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(15, "1 m"),
-  analytics: true,
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(15, "1 m"),
+    analytics: true,
 });
 
 export const postsRouter = createTRPCRouter({
@@ -86,59 +86,65 @@ export const postsRouter = createTRPCRouter({
       return (await addDataToPosts([post], ctx.prisma))[0];
     }),
 
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    const posts = await ctx.prisma.post.findMany({
-      take: 100,
-      orderBy: [{ createdAt: "desc" }],
-    });
+    getAll: publicProcedure
+        .input(z.object({ skip: z.number().optional(), take: z.number().optional() }))
+        .query(async ({ ctx, input }) => {
+            const posts = await ctx.prisma.post.findMany({
+                take: input.take ?? undefined,
+                skip: input.skip ?? undefined,
+                orderBy: [{ createdAt: "desc" }],
+            });
 
-    console.log("posts", posts);
+            console.log("posts", posts);
 
-    return addDataToPosts(posts, ctx.prisma);
-  }),
+            return addDataToPosts(posts, ctx.prisma);
+        }),
 
-  getPostsByUserId: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-      }),
-    )
-    .query(({ ctx, input }) =>
-      ctx.prisma.post
-        .findMany({
-          where: {
-            authorId: input.userId,
-          },
-          take: 100,
-          orderBy: [{ createdAt: "desc" }],
-        })
-        .then((posts) => addDataToPosts(posts, ctx.prisma)),
-    ),
+    getPostsByUserId: publicProcedure
+        .input(
+            z.object({
+                userId: z.string(),
+                skip: z.number().optional(),
+                take: z.number().optional()
+            }),
+        )
+        .query(({ ctx, input }) =>
+            ctx.prisma.post
+                .findMany({
+                    where: {
+                        authorId: input.userId,
+                    },
+                    take: input.take ?? undefined,
+                    skip: input.skip ?? undefined,
+                    orderBy: [{ createdAt: "desc" }],
+                })
+                .then((posts) => addDataToPosts(posts, ctx.prisma)),
+        ),
 
-  create: privateProcedure
-    .input(
-      z.object({
-        content: z
-          .string()
-          .min(1)
-          .max(1024, "Length should be less than 1024 symbols"),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const authorId = ctx.userId;
+    create: privateProcedure
+        .input(
+            z.object({
+                content: z
+                    .string()
+                    .min(1)
+                    .max(1024, "Length should be less than 1024 symbols"),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            const authorId = ctx.userId;
 
-      const { success } = await ratelimit.limit(authorId);
-      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
+            const { success } = await ratelimit.limit(authorId);
+            if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });
 
-      const post = await ctx.prisma.post.create({
-        data: {
-          content: input.content,
-          authorId,
-        },
-      });
+            const post = await ctx.prisma.post.create({
+                data: {
+                    content: input.content,
+                    authorId,
+                },
+            });
 
-      return post;
-    }),
+            return post;
+        }),
 });
 
 export const reactionsRouter = createTRPCRouter({
