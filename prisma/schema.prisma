@@ -37,7 +37,7 @@ model Reaction {
 
     post Post @relation(fields: [postId], references: [id])
 
-    @@unique([postId, userId])
+    @@unique([postId, userId, type]) // Новое уникальное ограничение
     @@index([postId])
     @@index([userId])
 }
