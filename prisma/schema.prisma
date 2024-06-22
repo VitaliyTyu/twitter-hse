@@ -56,3 +56,15 @@ model Comment {
     @@index([postId])
     @@index([authorId])
 }
+
+model Follow {
+    id          String   @id @default(cuid())
+    createdAt   DateTime @default(now())
+    
+    followerId  String
+    followingId String
+
+    @@unique([followerId, followingId])
+    @@index([followerId])
+    @@index([followingId])
+}

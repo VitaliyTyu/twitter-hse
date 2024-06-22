@@ -174,6 +174,41 @@ export const postsRouter = createTRPCRouter({
                 .then((posts) => addDataToPosts(posts, ctx.prisma)),
         ),
 
+    getPostsByFollowedUsers: privateProcedure
+        .input(
+            z.object({
+                userId: z.string(),
+                skip: z.number().optional(),
+                take: z.number().optional()
+            }),
+        )
+        .query(async ({ ctx, input }) => {
+            const followedUsers = await ctx.prisma.follow.findMany({
+                where: {
+                    followerId: input.userId,
+                },
+                select: {
+                    followingId: true,
+                },
+            });
+
+            const followedUserIds = followedUsers.map(follow => follow.followingId);
+
+            const posts = await ctx.prisma.post.findMany({
+                where: {
+                    authorId: { in: followedUserIds },
+                },
+                take: input.take ?? undefined,
+                skip: input.skip ?? undefined,
+                orderBy: [{ createdAt: "desc" }],
+                include: {
+                    comments: true,
+                },
+            });
+
+            return addDataToPosts(posts, ctx.prisma);
+        }),
+
     create: privateProcedure
         .input(
             z.object({
@@ -198,6 +233,7 @@ export const postsRouter = createTRPCRouter({
 
             return post;
         }),
+
     deletePost: privateProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
@@ -332,5 +368,3 @@ export const reactionsRouter = createTRPCRouter({
             return { message: "Reaction deleted successfully" };
         }),
 });
-
-
